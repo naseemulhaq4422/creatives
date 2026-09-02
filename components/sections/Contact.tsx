@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { SectionHeader } from "@/components/common/SectionHeader";
 import { SITE_CONTACT, SERVICES_DATA, COURSES_DATA } from "@/data/siteContent";
-import { MessageCircle, Mail, Phone, Clock, Zap, CheckCircle2, Send, AlertCircle, ArrowRight, Loader2 } from "lucide-react";
+import { MessageCircle, Mail, Phone, Clock, Zap, CheckCircle2, Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/common/Button";
 import { formatWhatsAppMessage } from "@/lib/utils";
 
@@ -86,28 +86,56 @@ export const Contact: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      const payload =
-        activeTab === "agency"
-          ? {
-              type: "agency",
-              ...agencyForm,
-            }
-          : {
-              type: "institute",
-              ...instituteForm,
-            };
+      const isAgency = activeTab === "agency";
+      const subject = isAgency
+        ? `🚀 New Agency Quote Request from ${agencyForm.name} (${agencyForm.service})`
+        : `🎓 New Institute Admission Inquiry from ${instituteForm.name} (${instituteForm.course})`;
 
-      // Dispatch to Next.js API route (/api/contact) which routes directly to naseemulhaq48@gmail.com
-      const res = await fetch("/api/contact", {
+      const messageBody = isAgency
+        ? `
+CREATIVES DIGITAL AGENCY PROPOSAL REQUEST
+----------------------------------------
+Full Name: ${agencyForm.name}
+Phone / WhatsApp: ${agencyForm.phone}
+Email: ${agencyForm.email}
+Interested Service: ${agencyForm.service}
+Budget Tier: ${agencyForm.budget}
+
+Project Requirements:
+${agencyForm.requirements}
+`
+        : `
+CREATIVES TRAINING INSTITUTE ADMISSION INQUIRY
+---------------------------------------------
+Full Name: ${instituteForm.name}
+Phone / WhatsApp: ${instituteForm.phone}
+Email: ${instituteForm.email}
+Target Course: ${instituteForm.course}
+Current Background: ${instituteForm.background}
+
+Learning Goals & Questions:
+${instituteForm.goals}
+`;
+
+      // Direct client-side dispatch to Web3Forms delivering to naseemulhaq48@gmail.com
+      await fetch("https://api.web3forms.com/submit", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          access_key: "66763a83-a7c8-472e-bb91-0da6324d26f6",
+          subject: subject,
+          from_name: isAgency ? agencyForm.name : instituteForm.name,
+          replyto: isAgency ? agencyForm.email : instituteForm.email,
+          to_email: SITE_CONTACT.email,
+          message: messageBody,
+        }),
       });
 
-      const data = await res.json();
-
       let whatsAppUrl = "";
-      if (activeTab === "agency") {
+      if (isAgency) {
         const text = formatWhatsAppMessage("agency", {
           name: agencyForm.name,
           service: agencyForm.service,
@@ -131,7 +159,7 @@ export const Contact: React.FC = () => {
       });
     } catch (err) {
       console.error("Submission failed:", err);
-      // Fallback graceful success with direct WhatsApp trigger
+      // Even if network fails, provide direct WhatsApp continuation
       const text = formatWhatsAppMessage(activeTab, activeTab === "agency" ? agencyForm : instituteForm);
       setSubmissionSuccess({
         type: activeTab,
